@@ -4,6 +4,7 @@ import { getAllDimensionSteps } from "@/lib/supabase";
 import { Kl8DimensionStep } from "@/lib/supabase";
 
 export const runtime = "edge";
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   let rows: Kl8DimensionStep[] = [];

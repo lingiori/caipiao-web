@@ -1,12 +1,15 @@
+/* Tailwind CSS 三大指令：基础样式、组件层、工具类 */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* 默认浅色主题变量 */
 :root {
   --background: #ffffff;
   --foreground: #171717;
 }
 
+/* 系统偏好深色模式时的主题变量 */
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
@@ -14,12 +17,14 @@
   }
 }
 
+/* 全局 body 样式：使用 CSS 变量控制颜色，并设置后备字体栈 */
 body {
   color: var(--foreground);
   background: var(--background);
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* 自定义工具类：用于长文本的排版平衡 */
 @layer utilities {
   .text-balance {
     text-wrap: balance;

@@ -1,9 +1,15 @@
 import { Kl8DimensionStep } from "@/lib/supabase";
 
+/** DimensionTable 组件的 props 类型 */
 export type DimensionTableProps = {
+  /** 要展示的维度步长数据数组 */
   rows: Kl8DimensionStep[];
 };
 
+/**
+ * 表格列定义：将 Kl8DimensionStep 的字段 key 映射到中文表头。
+ * 数组顺序决定页面上的列显示顺序。
+ */
 const headers: { key: keyof Kl8DimensionStep; label: string }[] = [
   { key: "dimension", label: "维度" },
   { key: "max_step", label: "最大步长" },
@@ -14,6 +20,13 @@ const headers: { key: keyof Kl8DimensionStep; label: string }[] = [
   { key: "last_updated", label: "更新时间" },
 ];
 
+/**
+ * 将单元格原始值格式化为可展示的字符串。
+ *
+ * @param key - 当前字段名
+ * @param value - 当前字段值
+ * @returns 格式化后的字符串；null/undefined 显示为 "-"，last_updated 显示为本地时间
+ */
 function formatValue(
   key: keyof Kl8DimensionStep,
   value: Kl8DimensionStep[keyof Kl8DimensionStep]
@@ -29,6 +42,12 @@ function formatValue(
   return String(value);
 }
 
+/**
+ * 维度步长数据表格组件。
+ * 以响应式表格形式展示 Kl8DimensionStep 数组，并对空数据、日期字段做友好处理。
+ *
+ * @param rows - 需要展示的维度步长数据
+ */
 export default function DimensionTable({ rows }: DimensionTableProps) {
   if (rows.length === 0) {
     return (

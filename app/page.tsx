@@ -4,12 +4,24 @@ import { useEffect, useState } from "react";
 import DimensionTable from "@/components/DimensionTable";
 import { Kl8DimensionStep } from "@/lib/supabase";
 
+/**
+ * 首页组件（客户端组件）。
+ * 负责在页面挂载后通过内部 API 拉取快乐8维度步长数据，
+ * 并根据加载、错误、数据三种状态渲染对应 UI。
+ */
 export default function HomePage() {
+  /** 从 /api/dimensions 获取到的维度步长数据数组 */
   const [rows, setRows] = useState<Kl8DimensionStep[]>([]);
+  /** 请求或数据处理过程中产生的错误提示信息 */
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  /** 是否仍在加载数据 */
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    /**
+     * 调用内部 API /api/dimensions 获取维度步长数据，
+     * 并将结果写入组件状态。
+     */
     async function fetchData() {
       try {
         const res = await fetch("/api/dimensions");

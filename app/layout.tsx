@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import Sidebar from "@/components/Sidebar";
 
 /** Geist Sans 可变字体配置，用于页面正文与标题 */
 const geistSans = localFont({
@@ -18,14 +19,14 @@ const geistMono = localFont({
 
 /** 页面元数据：标题与 SEO 描述 */
 export const metadata: Metadata = {
-  title: "快乐8 维度信息",
-  description: "基于 Supabase kl8_dimension_step 表展示快乐8彩票维度数据",
+  title: "彩票分析",
+  description: "基于 Supabase 的快乐8彩票数据分析平台",
 };
 
 /**
  * 根布局组件。
  * 为整个应用设置 html/body 结构、CSS 变量字体与语言属性，
- * 所有页面组件都会作为 children 渲染在 body 中。
+ * 并渲染持久化的左侧边栏；页面内容位于侧边栏右侧主内容区。
  *
  * @param children - 子页面节点
  */
@@ -39,7 +40,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <Sidebar />
+        <main className="min-h-screen bg-gray-100 pt-14 lg:ml-64 lg:pt-0">
+          {children}
+        </main>
       </body>
     </html>
   );

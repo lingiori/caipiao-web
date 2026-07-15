@@ -1,4 +1,24 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import {
+  type FilterState,
+  type SortDirection,
+  type SortableKey,
+} from "@/lib/table-utils";
+
+/**
+ * 快乐8 每期开奖数据表的单行类型定义。
+ * 对应 Supabase 数据库中的 kl8_bingo_all 表结构。
+ */
+export type Kl8BingoRow = {
+  /** 自增主键 */
+  id: number;
+  /** 彩票期号，例如 2026186 */
+  issue: number;
+  /** 逗号分隔的 20 个开奖号码，形如 "01,07,11,...,80" */
+  bingo_num: string;
+  /** 记录创建时间（ISO 8601 字符串） */
+  created_at: string | null;
+};
 
 /**
  * 快乐8 维度步长数据表的单行类型定义。
@@ -77,4 +97,161 @@ export async function getAllDimensionSteps(): Promise<Kl8DimensionStep[]> {
   }
 
   return (data as Kl8DimensionStep[]) ?? [];
+}
+
+/** 带分页、排序、筛选的维度步长查询参数 */
+export type DimensionQueryParams = {
+  /** 1-based 当前页码 */
+  page: number;
+  /** 每页条数 */
+  pageSize: 10 | 25 | 50 | 100;
+  /** 排序列 */
+  sortField: SortableKey;
+  /** 排序方向 */
+  sortDirection: SortDirection;
+  /** 筛选条件 */
+  filters: FilterState;
+};
+
+/** 带分页的维度步长查询结果 */
+export type DimensionQueryResult = {
+  /** 当前页数据 */
+  rows: Kl8DimensionStep[];
+  /** 符合筛选条件的总条数 */
+  total: number;
+};
+
+/**
+ * 根据查询参数从 kl8_dimension_step 表查询维度步长数据。
+ * 在服务端完成筛选、排序、分页，仅返回当前页数据及总条数。
+ *
+ * @param params - 查询参数
+ * @returns 当前页数据与总条数
+ * @throws 当 Supabase 查询发生错误时抛出错误，并附带原始错误信息
+ */
+export async function getDimensionSteps(
+  params: DimensionQueryParams
+): Promise<DimensionQueryResult> {
+  const { page, pageSize, sortField, sortDirection, filters } = params;
+
+  let query = getSupabaseClient()
+    .from("kl8_dimension_step")
+    .select("*", { count: "exact" });
+
+  // 维度名称模糊匹配（不区分大小写）
+  if (filters.dimension.trim()) {
+    query = query.ilike("dimension", `%${filters.dimension.trim()}%`);
+  }
+
+  // 数字列筛选
+  const numberFields: Array<"max_step" | "current_distance" | "tuijian_num"> = [
+    "max_step",
+    "current_distance",
+    "tuijian_num",
+  ];
+  for (const field of numberFields) {
+    const filter = filters[field];
+    const value = filter.value;
+
+    if (filter.operator === "range") {
+      if (filter.min !== null) {
+        query = query.gte(field, filter.min);
+      }
+      if (filter.max !== null) {
+        query = query.lte(field, filter.max);
+      }
+      continue;
+    }
+
+    if (value === null) continue;
+
+    switch (filter.operator) {
+      case ">":
+        query = query.gt(field, value);
+        break;
+      case ">=":
+        query = query.gte(field, value);
+        break;
+      case "=":
+        query = query.eq(field, value);
+        break;
+      case "<=":
+        query = query.lte(field, value);
+        break;
+      case "<":
+        query = query.lt(field, value);
+        break;
+    }
+  }
+
+  // 排序与分页（Supabase range 为 0-based 闭区间）
+  const start = (page - 1) * pageSize;
+  const end = start + pageSize - 1;
+
+  const { data, error, count } = await query
+    .order(sortField, { ascending: sortDirection === "asc" })
+    .range(start, end);
+
+  if (error) {
+    console.error("Error fetching kl8_dimension_step:", error);
+    throw new Error(error.message);
+  }
+
+  return {
+    rows: (data as Kl8DimensionStep[]) ?? [],
+    total: count ?? 0,
+  };
+}
+
+/**
+ * 开奖数据分页查询参数。
+ */
+export type BingoQueryParams = {
+  /** 1-based 当前页码 */
+  page: number;
+  /** 每页条数 */
+  pageSize: number;
+};
+
+/**
+ * 开奖数据分页查询结果。
+ */
+export type BingoQueryResult = {
+  /** 当前页数据，按期号降序排列（最新期号在前） */
+  rows: Kl8BingoRow[];
+  /** 总条数 */
+  total: number;
+};
+
+/**
+ * 从 kl8_bingo_all 表按页查询开奖数据。
+ * 结果按期号降序排列，最新一期为第一条；同时返回总条数用于分页。
+ *
+ * @param params - 分页参数
+ * @returns 当前页数据与总条数
+ * @throws 当 Supabase 查询发生错误时抛出错误，并附带原始错误信息
+ */
+export async function getBingoData(
+  params: BingoQueryParams
+): Promise<BingoQueryResult> {
+  const { page, pageSize } = params;
+
+  const start = (page - 1) * pageSize;
+  const end = start + pageSize - 1;
+
+  const { data, error, count } = await getSupabaseClient()
+    .from("kl8_bingo_all")
+    .select("*", { count: "exact" })
+    .order("issue", { ascending: false })
+    .range(start, end);
+
+  if (error) {
+    console.error("Error fetching kl8_bingo_all:", error);
+    throw new Error(error.message);
+  }
+
+  return {
+    rows: (data as Kl8BingoRow[]) ?? [],
+    total: count ?? 0,
+  };
 }

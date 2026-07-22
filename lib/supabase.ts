@@ -41,6 +41,29 @@ export type Kl8DimensionStep = {
   last_updated: string | null;
 };
 
+/**
+ * 快乐8 维度双号推荐数据表的单行类型定义。
+ * 对应 Supabase 数据库中的 kl8_dimension_step2 表结构。
+ */
+export type Kl8DimensionStep2 = {
+  /** 维度名称（主键），例如某个号码或指标维度 */
+  dimension: string;
+  /** 该维度在历史数据中出现的最大步长 */
+  max_step: number | null;
+  /** 该维度在历史数据中出现的最小步长 */
+  min_step: number | null;
+  /** 该维度在历史数据中的平均步长 */
+  avg_step: number | null;
+  /** 当前距离上一次出现的间隔 */
+  current_distance: number | null;
+  /** 基于算法计算出的两个推荐号码 */
+  tuijian_num: number[] | null;
+  /** 命中历史记录 */
+  hit_history: string | null;
+  /** 数据最近一次更新时间（ISO 8601 字符串） */
+  last_updated: string | null;
+};
+
 /** Supabase 客户端单例，避免在服务端重复创建连接 */
 let client: SupabaseClient | null = null;
 
@@ -199,6 +222,101 @@ export async function getDimensionSteps(
 
   return {
     rows: (data as Kl8DimensionStep[]) ?? [],
+    total: count ?? 0,
+  };
+}
+
+/**
+ * 根据查询参数从 kl8_dimension_step2 表查询维度双号推荐数据。
+ * 在服务端完成筛选、排序、分页，仅返回当前页数据及总条数。
+ * tuijian_num 为整数数组，支持输入一个或两个号码进行包含匹配。
+ *
+ * @param params - 查询参数
+ * @param tuijianNum2 - 第二个推荐号码（可选），与 params.filters.tuijian_num.value 同时存在时表示需同时包含两个号码
+ * @returns 当前页数据与总条数
+ * @throws 当 Supabase 查询发生错误时抛出错误，并附带原始错误信息
+ */
+export async function getDimensionStep2s(
+  params: DimensionQueryParams,
+  tuijianNum2?: number | null
+): Promise<{ rows: Kl8DimensionStep2[]; total: number }> {
+  const { page, pageSize, sortField, sortDirection, filters } = params;
+
+  let query = getSupabaseClient()
+    .from("kl8_dimension_step2")
+    .select("*", { count: "exact" });
+
+  // 维度名称模糊匹配（不区分大小写）
+  if (filters.dimension.trim()) {
+    query = query.ilike("dimension", `%${filters.dimension.trim()}%`);
+  }
+
+  // 数字列筛选（标量列）
+  const numberFields: Array<"max_step" | "current_distance"> = [
+    "max_step",
+    "current_distance",
+  ];
+  for (const field of numberFields) {
+    const filter = filters[field];
+    const value = filter.value;
+
+    if (filter.operator === "range") {
+      if (filter.min !== null) {
+        query = query.gte(field, filter.min);
+      }
+      if (filter.max !== null) {
+        query = query.lte(field, filter.max);
+      }
+      continue;
+    }
+
+    if (value === null) continue;
+
+    switch (filter.operator) {
+      case ">":
+        query = query.gt(field, value);
+        break;
+      case ">=":
+        query = query.gte(field, value);
+        break;
+      case "=":
+        query = query.eq(field, value);
+        break;
+      case "<=":
+        query = query.lte(field, value);
+        break;
+      case "<":
+        query = query.lt(field, value);
+        break;
+    }
+  }
+
+  // 推荐号数组包含筛选：支持一个或两个号码，自动去重
+  const tjValue = filters.tuijian_num.value;
+  const nums = [
+    ...(tjValue !== null ? [tjValue] : []),
+    ...(tuijianNum2 !== null && tuijianNum2 !== undefined ? [tuijianNum2] : []),
+  ];
+  const uniqueNums = Array.from(new Set(nums));
+  if (uniqueNums.length > 0) {
+    query = query.contains("tuijian_num", uniqueNums);
+  }
+
+  // 排序与分页（Supabase range 为 0-based 闭区间）
+  const start = (page - 1) * pageSize;
+  const end = start + pageSize - 1;
+
+  const { data, error, count } = await query
+    .order(sortField, { ascending: sortDirection === "asc" })
+    .range(start, end);
+
+  if (error) {
+    console.error("Error fetching kl8_dimension_step2:", error);
+    throw new Error(error.message);
+  }
+
+  return {
+    rows: (data as Kl8DimensionStep2[]) ?? [],
     total: count ?? 0,
   };
 }

@@ -27,6 +27,8 @@ export type Kl8BingoRow = {
 export type Kl8DimensionStep = {
   /** 维度名称（主键），例如某个号码或指标维度 */
   dimension: string;
+  /** 维度号，该维度对应的号码 */
+  weidu_num: number | null;
   /** 该维度在历史数据中出现的最大步长 */
   max_step: number | null;
   /** 该维度在历史数据中出现的最小步长 */

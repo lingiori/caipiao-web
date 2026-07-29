@@ -3,6 +3,7 @@
  */
 export type SortableKey =
   | "dimension"
+  | "weidu_num"
   | "max_step"
   | "current_distance"
   | "tuijian_num";
@@ -219,6 +220,7 @@ export function parseSort(searchParams: URLSearchParams): SortState {
   const key = searchParams.get("sortField") as SortableKey | null;
   const validKeys: SortableKey[] = [
     "dimension",
+    "weidu_num",
     "max_step",
     "current_distance",
     "tuijian_num",

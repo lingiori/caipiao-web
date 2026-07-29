@@ -18,6 +18,7 @@ const headers: {
   sortable: boolean;
 }[] = [
   { key: "dimension", label: "维度", sortable: true },
+  { key: "weidu_num", label: "维度号", sortable: true },
   { key: "max_step", label: "最大步长", sortable: true },
   { key: "min_step", label: "最小步长", sortable: false },
   { key: "avg_step", label: "平均步长", sortable: false },
@@ -29,6 +30,7 @@ const headers: {
 /** 可排序列的 key 集合，用于运行时校验 */
 const sortableKeys: SortableKey[] = [
   "dimension",
+  "weidu_num",
   "max_step",
   "current_distance",
   "tuijian_num",

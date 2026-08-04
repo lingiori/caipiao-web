@@ -27,7 +27,7 @@ export const navigation: NavCategory[] = [
     label: "快乐8",
     children: [
       { label: "走势图", href: "/" },
-      { label: "维度步长", href: "/kl8/dimensions" },
+      { label: "维度单号推荐", href: "/kl8/dimensions" },
       { label: "维度双号推荐", href: "/kl8/dimensions-step2" },
     ],
   },

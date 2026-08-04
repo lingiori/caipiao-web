@@ -24,7 +24,7 @@ type DimensionApiResponse = {
 };
 
 /**
- * 快乐8维度步长页面（客户端组件）。
+ * 快乐8维度单号推荐页面（客户端组件）。
  * 支持服务端分页、排序与筛选，状态变更时重新请求 /api/dimensions。
  */
 export default function Kl8DimensionsPage() {
@@ -36,6 +36,10 @@ export default function Kl8DimensionsPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   /** 是否仍在加载数据 */
   const [loading, setLoading] = useState(true);
+  /** 是否已完成最大日期初始化（避免首屏请求全量数据） */
+  const [initialized, setInitialized] = useState(false);
+  /** 表中 createdate 的最大日期，作为日期筛选的默认值 */
+  const [maxCreatedate, setMaxCreatedate] = useState<string | null>(null);
 
   /** 筛选状态 */
   const [filters, setFilters] = useState<FilterState>(createDefaultFilter());
@@ -76,6 +80,33 @@ export default function Kl8DimensionsPage() {
 
   useEffect(() => {
     /**
+     * 首次挂载时获取 kl8_dimension_step 表中 createdate 的最大日期，
+     * 并将其设为日期筛选的默认值（触发下方数据请求）。
+     */
+    async function fetchMaxCreatedate() {
+      try {
+        const res = await fetch("/api/dimensions/max-createdate");
+        const data = (await res.json()) as { maxCreatedate?: string | null };
+
+        if (res.ok && data.maxCreatedate) {
+          setMaxCreatedate(data.maxCreatedate);
+          setFilters((prev) => ({ ...prev, createdate: data.maxCreatedate! }));
+        }
+      } catch {
+        // 获取失败时不设置默认日期，按无日期筛选展示全部数据
+      } finally {
+        setInitialized(true);
+      }
+    }
+
+    fetchMaxCreatedate();
+  }, []);
+
+  useEffect(() => {
+    // 等待最大日期初始化完成，避免先请求一次全量数据造成闪烁
+    if (!initialized) return;
+
+    /**
      * 根据当前分页、排序、筛选状态请求 /api/dimensions 数据。
      */
     async function fetchData() {
@@ -111,11 +142,15 @@ export default function Kl8DimensionsPage() {
     <div className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">快乐8 维度信息</h1>
+          <h1 className="text-2xl font-bold text-gray-900">快乐8 维度单号推荐</h1>
           <p className="mt-1 text-sm text-gray-600">数据来源：kl8_dimension_step</p>
         </div>
 
-        <DimensionFilters filters={filters} onChange={handleFiltersChange} />
+        <DimensionFilters
+          filters={filters}
+          onChange={handleFiltersChange}
+          defaultCreatedate={maxCreatedate ?? ""}
+        />
 
         {loading ? (
           <div className="rounded-lg border border-gray-200 bg-white p-8 text-center text-gray-500">

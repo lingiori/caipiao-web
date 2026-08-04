@@ -39,6 +39,8 @@ export type Kl8DimensionStep = {
   current_distance: number | null;
   /** 基于算法计算出的推荐号码 */
   tuijian_num: number | null;
+  /** 数据生成日期（date 或 ISO 8601 字符串） */
+  createdate: string | null;
   /** 数据最近一次更新时间（ISO 8601 字符串） */
   last_updated: string | null;
 };
@@ -124,6 +126,32 @@ export async function getAllDimensionSteps(): Promise<Kl8DimensionStep[]> {
   return (data as Kl8DimensionStep[]) ?? [];
 }
 
+/**
+ * 查询 kl8_dimension_step 表中 createdate 的最大日期。
+ * 用于维度信息页面日期筛选的默认值。
+ *
+ * @returns 最大日期（YYYY-MM-DD 格式）；表中无数据时返回 null
+ * @throws 当 Supabase 查询发生错误时抛出错误，并附带原始错误信息
+ */
+export async function getMaxCreatedate(): Promise<string | null> {
+  const { data, error } = await getSupabaseClient()
+    .from("kl8_dimension_step")
+    .select("createdate")
+    .order("createdate", { ascending: false })
+    .limit(1);
+
+  if (error) {
+    console.error("Error fetching max createdate:", error);
+    throw new Error(error.message);
+  }
+
+  const value = data?.[0]?.createdate;
+  if (!value) return null;
+
+  // date 类型直接返回 YYYY-MM-DD；timestamptz 截取日期部分
+  return String(value).slice(0, 10);
+}
+
 /** 带分页、排序、筛选的维度步长查询参数 */
 export type DimensionQueryParams = {
   /** 1-based 当前页码 */
@@ -166,6 +194,15 @@ export async function getDimensionSteps(
   // 维度名称模糊匹配（不区分大小写）
   if (filters.dimension.trim()) {
     query = query.ilike("dimension", `%${filters.dimension.trim()}%`);
+  }
+
+  // 数据日期筛选：按“当日 00:00 至次日 00:00”区间匹配，兼容 date / timestamptz 列
+  if (filters.createdate) {
+    const nextDay = new Date(`${filters.createdate}T00:00:00Z`);
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+    query = query
+      .gte("createdate", filters.createdate)
+      .lt("createdate", nextDay.toISOString().slice(0, 10));
   }
 
   // 数字列筛选

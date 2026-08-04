@@ -14,11 +14,14 @@ type DimensionFiltersProps = {
   filters: FilterState;
   /** 筛选提交回调（回车或点击提交时触发） */
   onChange: (filters: FilterState) => void;
+  /** 日期筛选的默认值（通常为表中 createdate 的最大日期），清除筛选时恢复为该值 */
+  defaultCreatedate?: string;
 };
 
 /** 字段中文名映射 */
 const fieldLabels: Record<keyof FilterState, string> = {
   dimension: "维度",
+  createdate: "日期",
   max_step: "最大步长",
   current_distance: "当前距离",
   tuijian_num: "推荐号",
@@ -45,6 +48,7 @@ type NumberFilterField = "max_step" | "current_distance" | "tuijian_num";
 function createEmptyFilter(): FilterState {
   return {
     dimension: "",
+    createdate: "",
     max_step: { operator: ">", value: null, min: null, max: null },
     current_distance: { operator: ">", value: null, min: null, max: null },
     tuijian_num: { operator: ">", value: null, min: null, max: null },
@@ -81,6 +85,7 @@ function updateNumberFilter(
 export default function DimensionFilters({
   filters,
   onChange,
+  defaultCreatedate = "",
 }: DimensionFiltersProps) {
   /** 本地草稿状态，用户编辑时仅更新此状态 */
   const [draft, setDraft] = useState<FilterState>(filters);
@@ -105,6 +110,13 @@ export default function DimensionFilters({
    */
   function handleDimensionChange(value: string) {
     setDraft((prev) => ({ ...prev, dimension: value }));
+  }
+
+  /**
+   * 处理日期选择变化。
+   */
+  function handleCreatedateChange(value: string) {
+    setDraft((prev) => ({ ...prev, createdate: value }));
   }
 
   /**
@@ -163,15 +175,17 @@ export default function DimensionFilters({
 
   /**
    * 清除所有筛选条件并立即提交。
+   * 日期恢复为默认值（表中 createdate 的最大日期），而非清空。
    */
   function handleClear() {
-    const empty = createEmptyFilter();
+    const empty = { ...createEmptyFilter(), createdate: defaultCreatedate };
     setDraft(empty);
     onChange(empty);
   }
 
   const hasActiveFilter =
     filters.dimension.trim() !== "" ||
+    filters.createdate !== defaultCreatedate ||
     numberFilterFields.some(
       (field) =>
         filters[field].operator !== ">" ||
@@ -182,22 +196,40 @@ export default function DimensionFilters({
 
   return (
     <div className="mb-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-      <div className="mb-4">
-        <label
-          htmlFor="dimension-filter"
-          className="mb-1 block text-sm font-medium text-gray-700"
-        >
-          维度搜索
-        </label>
-        <input
-          id="dimension-filter"
-          type="text"
-          value={draft.dimension}
-          onChange={(e) => handleDimensionChange(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="输入维度名称，按回车搜索"
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:w-80"
-        />
+      <div className="mb-4 flex flex-wrap items-end gap-4">
+        <div>
+          <label
+            htmlFor="dimension-filter"
+            className="mb-1 block text-sm font-medium text-gray-700"
+          >
+            维度搜索
+          </label>
+          <input
+            id="dimension-filter"
+            type="text"
+            value={draft.dimension}
+            onChange={(e) => handleDimensionChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="输入维度名称，按回车搜索"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 sm:w-80"
+          />
+        </div>
+        <div>
+          <label
+            htmlFor="createdate-filter"
+            className="mb-1 block text-sm font-medium text-gray-700"
+          >
+            日期
+          </label>
+          <input
+            id="createdate-filter"
+            type="date"
+            value={draft.createdate}
+            onChange={(e) => handleCreatedateChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

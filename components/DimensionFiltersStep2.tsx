@@ -21,6 +21,7 @@ type DimensionFiltersStep2Props = {
 /** 字段中文名映射 */
 const fieldLabels: Record<keyof FilterState, string> = {
   dimension: "维度",
+  createdate: "日期",
   max_step: "最大步长",
   current_distance: "当前距离",
   tuijian_num: "推荐号",
@@ -47,6 +48,7 @@ type NumberFilterField = "max_step" | "current_distance";
 function createEmptyFilter(): FilterState {
   return {
     dimension: "",
+    createdate: "",
     max_step: { operator: ">", value: null, min: null, max: null },
     current_distance: { operator: ">", value: null, min: null, max: null },
     tuijian_num: { operator: "=", value: null, min: null, max: null },

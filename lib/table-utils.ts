@@ -38,6 +38,8 @@ export type NumberFilter = {
 export type FilterState = {
   /** 维度名称模糊搜索关键词 */
   dimension: string;
+  /** 数据生成日期筛选（YYYY-MM-DD，空字符串表示不筛选） */
+  createdate: string;
   /** 最大步长筛选 */
   max_step: NumberFilter;
   /** 当前距离筛选 */
@@ -98,6 +100,7 @@ function createDefaultNumberFilter(): NumberFilter {
 export function createDefaultFilter(): FilterState {
   return {
     dimension: "",
+    createdate: "",
     max_step: createDefaultNumberFilter(),
     current_distance: createDefaultNumberFilter(),
     tuijian_num: createDefaultNumberFilter(),
@@ -142,6 +145,10 @@ export function filtersToSearchParams(
 
   if (filters.dimension.trim()) {
     params.dimension = filters.dimension.trim();
+  }
+
+  if (filters.createdate) {
+    params.createdate = filters.createdate;
   }
 
   for (const field of numberFilterFields) {
@@ -250,6 +257,11 @@ export function parseFilters(searchParams: URLSearchParams): FilterState {
   const dimension = searchParams.get("dimension");
   if (dimension !== null) {
     filters.dimension = dimension;
+  }
+
+  const createdate = searchParams.get("createdate");
+  if (createdate !== null && /^\d{4}-\d{2}-\d{2}$/.test(createdate)) {
+    filters.createdate = createdate;
   }
 
   const validOperators: NumberOperator[] = [">", ">=", "=", "<=", "<", "range"];

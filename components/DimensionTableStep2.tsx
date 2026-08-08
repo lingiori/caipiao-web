@@ -154,18 +154,22 @@ export default function DimensionTableStep2({
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200">
-          {rows.map((row) => (
-            <tr key={row.dimension} className="hover:bg-gray-50">
+          {rows.map((row, rowIndex) => {
+            // 同一维度可能重复出现（如按日期累积数据），需组合 key 保证唯一
+            const rowKey = `${row.dimension}-${rowIndex}`;
+            return (
+            <tr key={rowKey} className="hover:bg-gray-50">
               {headers.map((h) => (
                 <td
-                  key={`${row.dimension}-${h.key}`}
+                  key={`${rowKey}-${h.key}`}
                   className="whitespace-nowrap px-4 py-3 text-gray-900"
                 >
                   {formatValue(h.key, row[h.key])}
                 </td>
               ))}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

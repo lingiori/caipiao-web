@@ -24,6 +24,7 @@ const headers: {
   { key: "avg_step", label: "平均步长", sortable: false },
   { key: "current_distance", label: "当前距离", sortable: true },
   { key: "tuijian_num", label: "推荐号", sortable: true },
+  { key: "createdate", label: "创建日期", sortable: true },
   { key: "last_updated", label: "更新时间", sortable: false },
 ];
 
@@ -34,6 +35,7 @@ const sortableKeys: SortableKey[] = [
   "max_step",
   "current_distance",
   "tuijian_num",
+  "createdate",
 ];
 
 /**
@@ -145,18 +147,22 @@ export default function DimensionTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200">
-          {rows.map((row) => (
-            <tr key={row.dimension} className="hover:bg-gray-50">
+          {rows.map((row, rowIndex) => {
+            // 同一维度在不同 createdate 下会重复出现，需组合 key 保证唯一
+            const rowKey = `${row.dimension}-${row.createdate ?? ""}-${rowIndex}`;
+            return (
+            <tr key={rowKey} className="hover:bg-gray-50">
               {headers.map((h) => (
                 <td
-                  key={`${row.dimension}-${h.key}`}
+                  key={`${rowKey}-${h.key}`}
                   className="whitespace-nowrap px-4 py-3 text-gray-900"
                 >
                   {formatValue(h.key, row[h.key])}
                 </td>
               ))}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

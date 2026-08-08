@@ -6,7 +6,8 @@ export type SortableKey =
   | "weidu_num"
   | "max_step"
   | "current_distance"
-  | "tuijian_num";
+  | "tuijian_num"
+  | "createdate";
 
 /**
  * 排序方向。
@@ -231,6 +232,7 @@ export function parseSort(searchParams: URLSearchParams): SortState {
     "max_step",
     "current_distance",
     "tuijian_num",
+    "createdate",
   ];
 
   const direction = searchParams.get("sortDirection") as SortDirection | null;

@@ -112,7 +112,11 @@ export async function* streamChatCompletion(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      Accept: "application/json",
       Authorization: `Bearer ${apiKey}`,
+      // Cloudflare Workers 出口默认 UA 易被对方 WAF 当作爬虫拦截
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
     },
     body: JSON.stringify({
       model,
@@ -128,7 +132,13 @@ export async function* streamChatCompletion(
 
   if (!res.ok || !res.body) {
     const text = await res.text().catch(() => "");
-    throw new Error(`大模型接口错误 ${res.status}: ${text.slice(0, 300)}`);
+    // Cloudflare 拦截页（403/1020 等）里的错误码对定位拦截原因关键
+    const codeMatch = text.match(/Error code:\s*(\d+)|error_code\D+(\d+)/i);
+    const cfRay = res.headers.get("cf-ray") ?? "";
+    const detail = codeMatch
+      ? `（拦截页错误码 ${codeMatch[1] ?? codeMatch[2]}，cf-ray ${cfRay}）`
+      : text.slice(0, 300);
+    throw new Error(`大模型接口错误 ${res.status}${detail}`);
   }
 
   const reader = res.body.getReader();

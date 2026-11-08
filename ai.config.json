@@ -7,7 +7,7 @@
     ]
   },
   "providers": {
-    "kimi": { "apiKey": "", "baseUrl": "https://api.moonshot.cn/v1", "model": "k3" },
+    "kimi": { "apiKey": "", "baseUrl": "https://api.kimi.com/coding/v1", "model": "k3" },
     "deepseek": { "apiKey": "", "baseUrl": "https://api.deepseek.com", "model": "deepseek-chat" }
   }
 }

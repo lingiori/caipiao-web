@@ -79,7 +79,7 @@ let client: SupabaseClient | null = null;
  * @returns 配置好的 SupabaseClient 实例
  * @throws 当缺少 SUPABASE_URL 与 SUPABASE_PUBLISHABLE_KEY/ANON_KEY 时抛出错误
  */
-function getSupabaseClient(): SupabaseClient {
+export function getSupabaseClient(): SupabaseClient {
   if (client) return client;
 
   const supabaseUrl =
@@ -411,4 +411,146 @@ export async function getBingoData(
     rows: (data as Kl8BingoRow[]) ?? [],
     total: count ?? 0,
   };
+}
+
+/* =============================================================
+ * AI 问答功能的会话持久化（chat_sessions / chat_messages）
+ * 仅写这两张新表；kl8_* 业务表保持只读（原则 1）。
+ * ============================================================= */
+
+/** 聊天会话（一个聊天窗口） */
+export type ChatSession = {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+};
+
+/** 聊天消息（assistant 的 content 为 Markdown） */
+export type ChatMessageRow = {
+  id: string;
+  session_id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+};
+
+/**
+ * 列出全部会话，按最近更新倒序（最多 100 条）。
+ */
+export async function listChatSessions(): Promise<ChatSession[]> {
+  const { data, error } = await getSupabaseClient()
+    .from("chat_sessions")
+    .select("*")
+    .order("updated_at", { ascending: false })
+    .limit(100);
+
+  if (error) {
+    console.error("Error fetching chat_sessions:", error);
+    throw new Error(error.message);
+  }
+  return (data as ChatSession[]) ?? [];
+}
+
+/**
+ * 创建新会话。
+ *
+ * @param title - 会话标题（通常取首条消息前 20 字）
+ */
+export async function createChatSession(title: string): Promise<ChatSession> {
+  const { data, error } = await getSupabaseClient()
+    .from("chat_sessions")
+    .insert({ title: title || "新对话" })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error creating chat_session:", error);
+    throw new Error(error.message);
+  }
+  return data as ChatSession;
+}
+
+/**
+ * 重命名会话。
+ */
+export async function renameChatSession(id: string, title: string): Promise<void> {
+  const { error } = await getSupabaseClient()
+    .from("chat_sessions")
+    .update({ title })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error renaming chat_session:", error);
+    throw new Error(error.message);
+  }
+}
+
+/**
+ * 刷新会话的 updated_at（有新消息时调用，让会话排到列表最前）。
+ */
+export async function touchChatSession(id: string): Promise<void> {
+  const { error } = await getSupabaseClient()
+    .from("chat_sessions")
+    .update({ updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error touching chat_session:", error);
+    throw new Error(error.message);
+  }
+}
+
+/**
+ * 删除会话（chat_messages 级联删除）。
+ */
+export async function deleteChatSession(id: string): Promise<void> {
+  const { error } = await getSupabaseClient()
+    .from("chat_sessions")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error deleting chat_session:", error);
+    throw new Error(error.message);
+  }
+}
+
+/**
+ * 列出会话的最近消息（最多 200 条），按时间升序返回。
+ */
+export async function listChatMessages(sessionId: string): Promise<ChatMessageRow[]> {
+  const { data, error } = await getSupabaseClient()
+    .from("chat_messages")
+    .select("*")
+    .eq("session_id", sessionId)
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (error) {
+    console.error("Error fetching chat_messages:", error);
+    throw new Error(error.message);
+  }
+  return ((data as ChatMessageRow[]) ?? []).reverse();
+}
+
+/**
+ * 写入一条消息。
+ */
+export async function insertChatMessage(msg: {
+  session_id: string;
+  role: "user" | "assistant";
+  content: string;
+}): Promise<ChatMessageRow> {
+  const { data, error } = await getSupabaseClient()
+    .from("chat_messages")
+    .insert(msg)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error inserting chat_message:", error);
+    throw new Error(error.message);
+  }
+  return data as ChatMessageRow;
 }

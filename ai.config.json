@@ -1,0 +1,13 @@
+{
+  "activeProvider": "kimi",
+  "auth": {
+    "sessionSecret": "",
+    "users": [
+      { "user": "caipiao1", "passHash": "6cfe1115926ed87003ff457712df9fa04dbdffdcd69defa96c3cd1729307e161" }
+    ]
+  },
+  "providers": {
+    "kimi": { "apiKey": "", "baseUrl": "https://api.moonshot.cn/v1", "model": "k3" },
+    "deepseek": { "apiKey": "", "baseUrl": "https://api.deepseek.com", "model": "deepseek-chat" }
+  }
+}

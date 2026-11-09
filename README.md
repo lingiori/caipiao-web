@@ -25,8 +25,8 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
      # 环境变量写入 /etc/llm-relay.env（RELAY_SECRET=共享密钥、KIMI_API_KEY=真实key、KIMI_UPSTREAM=https://api.kimi.com/coding/v1）
      # systemd 服务 EnvironmentFile 指向该文件，ExecStart=python3 /opt/llm-relay/llm_relay.py，Restart=always
      ```
-     安全组放行 TCP **18080**；启动后 `curl http://127.0.0.1:18080/healthz` 应回 `{"status":"ok"}`。中转只暴露 `POST /v1/chat/completions`，每个请求须带 `X-Relay-Secret` 头校验，Kimi key 只存服务器。本地自测：`python scripts/test_llm_relay.py`。
-   - Cloudflare Pages 环境变量改为：`KIMI_BASE_URL=http://47.95.219.76:18080/v1`、`KIMI_RELAY_SECRET=<与服务器 RELAY_SECRET 一致>`，并可删掉 `KIMI_API_KEY`（走中转时不再需要）。
+     监听端口**必须是 Cloudflare Workers 出站白名单端口**（HTTP：80/8080/8880/2052/2082/2086/2095），默认 **2052**——否则请求在 Cloudflare 边缘就被拦（403 错误码 1003，根本到不了服务器）。安全组放行所选端口；启动后 `curl http://127.0.0.1:2052/healthz` 应回 `{"status":"ok"}`。中转只暴露 `POST /v1/chat/completions`，每个请求须带 `X-Relay-Secret` 头校验，Kimi key 只存服务器。本地自测：`python scripts/test_llm_relay.py`。
+   - Cloudflare Pages 环境变量改为：`KIMI_BASE_URL=http://47.95.219.76:2052/v1`、`KIMI_RELAY_SECRET=<与服务器 RELAY_SECRET 一致>`，并可删掉 `KIMI_API_KEY`（走中转时不再需要）。**改完环境变量必须重新部署才生效**。
    - 注意：中转走 http 明文（IP 直连无 TLS），密钥以头部传输；共享密钥泄露等于他人可白嫖你的 Kimi 额度，泄露后两边同步更换即可。
 
 ## Getting Started

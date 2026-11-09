@@ -10,7 +10,7 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 MOCK_PORT = 19443
-RELAY_PORT = 18080
+RELAY_PORT = 12052
 SECRET = "test-secret-0123456789abcdef"
 
 

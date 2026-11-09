@@ -15,8 +15,12 @@ Kimi 大模型中转服务（方案 B）。
 只用标准库（无需 pip 安装任何东西），任何 python3 均可运行：
 
   RELAY_SECRET=<共享密钥> KIMI_API_KEY=sk-kimi-... \
-  KIMI_UPSTREAM=https://api.kimi.com/coding/v1 RELAY_PORT=18080 \
+  KIMI_UPSTREAM=https://api.kimi.com/coding/v1 RELAY_PORT=2052 \
   python3 llm_relay.py
+
+注意：Cloudflare Workers 的 fetch 只允许特定出站端口（HTTP: 80/8080/8880/2052/
+2082/2086/2095），端口必须取其中之一，否则请求在 Cloudflare 边缘就被拦
+（返回带 cf-ray 的 403 错误码 1003，根本到不了本服务）。
 """
 import hmac
 import json
@@ -31,7 +35,7 @@ UPSTREAM = os.environ.get(
 ).rstrip("/")
 RELAY_SECRET = os.environ.get("RELAY_SECRET", "")
 KIMI_API_KEY = os.environ.get("KIMI_API_KEY", "")
-PORT = int(os.environ.get("RELAY_PORT", "18080"))
+PORT = int(os.environ.get("RELAY_PORT", "2052"))  # 须在 CF Workers 出站端口白名单内
 # 上游首字节可能较慢（智能体多轮），给足超时
 UPSTREAM_TIMEOUT = int(os.environ.get("RELAY_TIMEOUT", "300"))
 

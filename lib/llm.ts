@@ -153,7 +153,14 @@ export async function* streamChatCompletion(
     const detail = codeMatch
       ? `（拦截页错误码 ${codeMatch[1] ?? codeMatch[2]}，cf-ray ${cfRay}）`
       : text.slice(0, 300);
-    throw new Error(`大模型接口错误 ${res.status}${detail}`);
+    // 带上实际请求的 host，便于确认走的是中转还是直连
+    let host = "";
+    try {
+      host = new URL(baseUrl).host;
+    } catch {
+      /* 忽略非法 URL */
+    }
+    throw new Error(`大模型接口错误 ${res.status}${detail} [上游: ${host}]`);
   }
 
   const reader = res.body.getReader();

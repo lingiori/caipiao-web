@@ -49,6 +49,12 @@ function resolveProvider(): {
   apiKey: string;
   baseUrl: string;
   model: string;
+  /**
+   * 中转共享密钥（方案 B）。Kimi 的 WAF 封锁 Cloudflare Workers 出口 IP（403），
+   * 设 KIMI_RELAY_SECRET + KIMI_BASE_URL 指向国内服务器中转后，
+   * 请求改发中转（X-Relay-Secret 头鉴权），真实 key 只存在中转服务器上。
+   */
+  relaySecret: string;
 } {
   const active = (process.env.AI_PROVIDER ||
     aiConfig.activeProvider) as ProviderName;
@@ -60,6 +66,7 @@ function resolveProvider(): {
       baseUrl:
         process.env.DEEPSEEK_BASE_URL || aiConfig.providers.deepseek.baseUrl,
       model: process.env.DEEPSEEK_MODEL || aiConfig.providers.deepseek.model,
+      relaySecret: "",
     };
   }
   return {
@@ -67,6 +74,7 @@ function resolveProvider(): {
     apiKey: process.env.KIMI_API_KEY || aiConfig.providers.kimi.apiKey,
     baseUrl: process.env.KIMI_BASE_URL || aiConfig.providers.kimi.baseUrl,
     model: process.env.KIMI_MODEL || aiConfig.providers.kimi.model,
+    relaySecret: process.env.KIMI_RELAY_SECRET || "",
   };
 }
 
@@ -99,25 +107,32 @@ export async function* streamChatCompletion(
   tools: LlmToolDef[],
   signal?: AbortSignal
 ): AsyncGenerator<LlmStreamEvent> {
-  const { name, apiKey, baseUrl, model } = resolveProvider();
+  const { name, apiKey, baseUrl, model, relaySecret } = resolveProvider();
 
-  if (!apiKey) {
+  // 走中转时真实 key 在中转服务器上，Workers 侧只需共享密钥；直连时才要求 apiKey
+  if (!relaySecret && !apiKey) {
     throw new Error(
       `未配置 ${name === "kimi" ? "KIMI" : "DEEPSEEK"}_API_KEY，` +
         `请在 ai.config.json 或环境变量中设置`
     );
   }
 
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    // Cloudflare Workers 出口默认 UA 易被对方 WAF 当作爬虫拦截
+    "User-Agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  };
+  if (relaySecret) {
+    headers["X-Relay-Secret"] = relaySecret;
+  } else if (apiKey) {
+    headers.Authorization = `Bearer ${apiKey}`;
+  }
+
   const res = await fetch(`${baseUrl.replace(/\/$/, "")}/chat/completions`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      Authorization: `Bearer ${apiKey}`,
-      // Cloudflare Workers 出口默认 UA 易被对方 WAF 当作爬虫拦截
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-    },
+    headers,
     body: JSON.stringify({
       model,
       messages,

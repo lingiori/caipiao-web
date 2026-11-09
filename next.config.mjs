@@ -9,6 +9,11 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  experimental: {
+    // 本地 Windows 上 next build 的 build worker 会报 spawn UNKNOWN（libuv 已知问题），
+    // 限制为单 worker 可绕过；Cloudflare 构建在 Linux 上运行，不受影响
+    cpus: 1,
+  },
 };
 
 export default nextConfig;

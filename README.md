@@ -17,6 +17,17 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
    - 或在 `.env.local` 设 `KIMI_API_KEY`；Cloudflare Pages 在控制台环境变量中配置
 3. 默认 Kimi（模型 `k3`）；切换到 DeepSeek：设 `AI_PROVIDER=deepseek` 并填 `DEEPSEEK_API_KEY`。
 4. **登录账号**：`/chat` 页面需账号密码访问，账号配置在 `ai.config.json` 的 `auth.users`（密码存 SHA-256 哈希）。新增账号：`echo -n "密码" | sha256sum` 生成哈希后追加一行即可。会话有效期 7 天（cookie 由 `auth.sessionSecret` 签名；**部署到 Cloudflare 时需在环境变量配置 `AUTH_SESSION_SECRET`**，因为仓库里的 `ai.config.json` 只保留不含密钥的净化版）。
+5. **Kimi 403 中转（方案 B）**：Kimi 的 WAF 会拦截 Cloudflare Workers 出口 IP（直连报 403 拦截页）。解决：在国内服务器（阿里云 `47.95.219.76`）跑 `scripts/llm_relay.py` 做流式中转，Workers → 中转 → Kimi：
+   - 服务器（需 Python 3，无需 pip 依赖）：
+     ```bash
+     mkdir -p /opt/llm-relay && cd /opt/llm-relay
+     # 上传 scripts/llm_relay.py 后：
+     # 环境变量写入 /etc/llm-relay.env（RELAY_SECRET=共享密钥、KIMI_API_KEY=真实key、KIMI_UPSTREAM=https://api.kimi.com/coding/v1）
+     # systemd 服务 EnvironmentFile 指向该文件，ExecStart=python3 /opt/llm-relay/llm_relay.py，Restart=always
+     ```
+     安全组放行 TCP **18080**；启动后 `curl http://127.0.0.1:18080/healthz` 应回 `{"status":"ok"}`。中转只暴露 `POST /v1/chat/completions`，每个请求须带 `X-Relay-Secret` 头校验，Kimi key 只存服务器。本地自测：`python scripts/test_llm_relay.py`。
+   - Cloudflare Pages 环境变量改为：`KIMI_BASE_URL=http://47.95.219.76:18080/v1`、`KIMI_RELAY_SECRET=<与服务器 RELAY_SECRET 一致>`，并可删掉 `KIMI_API_KEY`（走中转时不再需要）。
+   - 注意：中转走 http 明文（IP 直连无 TLS），密钥以头部传输；共享密钥泄露等于他人可白嫖你的 Kimi 额度，泄露后两边同步更换即可。
 
 ## Getting Started
 
